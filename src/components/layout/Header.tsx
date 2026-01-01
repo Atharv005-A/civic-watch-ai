@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Shield, 
@@ -10,9 +10,22 @@ import {
   MapPin, 
   Bell,
   User,
-  LogIn
+  LogIn,
+  LogOut,
+  Settings,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 const navItems = [
   { name: 'Home', path: '/', icon: Shield },
@@ -24,6 +37,19 @@ const navItems = [
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile, role, signOut, isAdmin, isAuthority } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  const getRoleBadgeVariant = () => {
+    if (isAdmin) return 'destructive';
+    if (isAuthority) return 'info';
+    return 'secondary';
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border/50">
@@ -60,19 +86,84 @@ export function Header() {
                 </Link>
               );
             })}
+            
+            {/* Admin Link */}
+            {(isAdmin || isAuthority) && (
+              <Link to="/admin">
+                <Button
+                  variant={location.pathname === '/admin' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className={`gap-2 ${location.pathname === '/admin' ? 'bg-accent/10 text-accent' : ''}`}
+                >
+                  <Settings className="w-4 h-4" />
+                  Admin
+                </Button>
+              </Link>
+            )}
           </nav>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-            </Button>
+            {user && (
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+              </Button>
+            )}
             
-            <Button variant="accent" size="sm" className="hidden sm:flex gap-2">
-              <LogIn className="w-4 h-4" />
-              Login
-            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+                      <User className="w-4 h-4 text-accent" />
+                    </div>
+                    <div className="hidden sm:block text-left">
+                      <p className="text-sm font-medium">{profile?.full_name || 'User'}</p>
+                      <Badge variant={getRoleBadgeVariant()} className="text-[10px] px-1.5 py-0">
+                        {role}
+                      </Badge>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div>
+                      <p className="font-medium">{profile?.full_name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">{profile?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <User className="w-4 h-4 mr-2" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    My Complaints
+                  </DropdownMenuItem>
+                  {(isAdmin || isAuthority) && (
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Admin Panel
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link to="/auth">
+                <Button variant="accent" size="sm" className="gap-2">
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden sm:inline">Login</span>
+                </Button>
+              </Link>
+            )}
 
             {/* Mobile Menu Button */}
             <Button
@@ -111,10 +202,22 @@ export function Header() {
                   </Link>
                 );
               })}
-              <Button variant="accent" className="w-full gap-2 mt-4">
-                <LogIn className="w-4 h-4" />
-                Login / Sign Up
-              </Button>
+              {(isAdmin || isAuthority) && (
+                <Link to="/admin" onClick={() => setIsOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start gap-3">
+                    <Settings className="w-5 h-5" />
+                    Admin Panel
+                  </Button>
+                </Link>
+              )}
+              {!user && (
+                <Link to="/auth" onClick={() => setIsOpen(false)}>
+                  <Button variant="accent" className="w-full gap-2 mt-4">
+                    <LogIn className="w-4 h-4" />
+                    Login / Sign Up
+                  </Button>
+                </Link>
+              )}
             </nav>
           </motion.div>
         )}
