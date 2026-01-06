@@ -8,7 +8,10 @@ import {
   Send,
   AlertTriangle,
   CheckCircle,
-  Info
+  Info,
+  Brain,
+  Shield,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +22,17 @@ import { LocationMap } from '@/components/map/LocationMap';
 import { CIVIC_CATEGORIES, ANONYMOUS_CATEGORIES } from '@/types/complaint';
 import { generateAnonymousId } from '@/lib/mockData';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+interface AIAnalysis {
+  sentiment: 'positive' | 'neutral' | 'negative';
+  fakeProbability: number;
+  credibilityScore: number;
+  keywords: string[];
+  suggestedDepartment: string;
+  urgencyScore: number;
+  summary: string;
+}
 
 interface ComplaintFormProps {
   defaultType?: 'civic' | 'anonymous';
@@ -36,13 +50,53 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
     phone: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [anonymousId, setAnonymousId] = useState('');
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [complaintId, setComplaintId] = useState('');
 
   const categories = reportType === 'civic' ? CIVIC_CATEGORIES : ANONYMOUS_CATEGORIES;
 
   const handleLocationSelect = (lat: number, lng: number, address: string) => {
     setLocation({ lat, lng, address });
+  };
+
+  const analyzeComplaint = async (): Promise<AIAnalysis | null> => {
+    try {
+      setIsAnalyzing(true);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-complaint`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          category: selectedCategory,
+          type: reportType,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast.error('AI service is busy. Please try again in a moment.');
+          return null;
+        }
+        throw new Error('Failed to analyze complaint');
+      }
+
+      const analysis = await response.json();
+      setAiAnalysis(analysis);
+      return analysis;
+    } catch (error) {
+      console.error('Analysis error:', error);
+      toast.error('AI analysis failed. Submitting with default scores.');
+      return null;
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,15 +114,64 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Run AI analysis
+      const analysis = await analyzeComplaint();
 
-    const newAnonymousId = reportType === 'anonymous' ? generateAnonymousId() : '';
-    setAnonymousId(newAnonymousId);
-    setSubmitted(true);
-    setIsSubmitting(false);
+      // Generate complaint ID
+      const newAnonymousId = reportType === 'anonymous' ? generateAnonymousId() : '';
+      const newComplaintId = reportType === 'anonymous' 
+        ? newAnonymousId 
+        : 'CIV-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    toast.success('Complaint submitted successfully!');
+      // Determine priority based on urgency score
+      let priority: 'low' | 'medium' | 'high' | 'critical' = 'medium';
+      if (analysis) {
+        if (analysis.urgencyScore >= 8) priority = 'critical';
+        else if (analysis.urgencyScore >= 6) priority = 'high';
+        else if (analysis.urgencyScore >= 4) priority = 'medium';
+        else priority = 'low';
+      }
+
+      // Insert complaint into database
+      const { error } = await supabase.from('complaints').insert({
+        complaint_id: newComplaintId,
+        type: reportType,
+        category: selectedCategory,
+        title: formData.title,
+        description: formData.description,
+        location_lat: location.lat,
+        location_lng: location.lng,
+        location_address: location.address,
+        status: 'pending',
+        priority,
+        credibility_score: analysis?.credibilityScore ?? 70,
+        reporter_name: reportType === 'civic' ? formData.name || null : null,
+        reporter_email: reportType === 'civic' ? formData.email || null : null,
+        reporter_phone: reportType === 'civic' ? formData.phone || null : null,
+        anonymous_id: reportType === 'anonymous' ? newAnonymousId : null,
+        ai_sentiment: analysis?.sentiment ?? null,
+        ai_fake_probability: analysis?.fakeProbability ?? null,
+        ai_urgency_score: analysis?.urgencyScore ?? null,
+        ai_keywords: analysis?.keywords ?? null,
+        ai_suggested_department: analysis?.suggestedDepartment ?? null,
+      });
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error('Failed to save complaint');
+      }
+
+      setAnonymousId(newAnonymousId);
+      setComplaintId(newComplaintId);
+      setSubmitted(true);
+      toast.success('Complaint submitted and analyzed successfully!');
+    } catch (error) {
+      console.error('Submit error:', error);
+      toast.error('Failed to submit complaint. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -86,13 +189,13 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
             Complaint Submitted Successfully!
           </h2>
           <p className="text-muted-foreground mb-6">
-            Your complaint has been registered and will be reviewed by our AI system.
+            Your complaint has been analyzed by our AI system and registered.
           </p>
           
           <div className="bg-muted/50 rounded-xl p-6 mb-6">
             <p className="text-sm text-muted-foreground mb-2">Your Tracking ID</p>
             <p className="font-mono text-2xl font-bold text-accent">
-              {reportType === 'anonymous' ? anonymousId : 'CIV-' + Math.random().toString(36).substring(2, 8).toUpperCase()}
+              {complaintId}
             </p>
             {reportType === 'anonymous' && (
               <p className="text-xs text-muted-foreground mt-2">
@@ -101,12 +204,67 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
             )}
           </div>
 
+          {/* AI Analysis Results */}
+          {aiAnalysis && (
+            <div className="bg-muted/30 rounded-xl p-6 mb-6 text-left">
+              <div className="flex items-center gap-2 mb-4">
+                <Brain className="w-5 h-5 text-accent" />
+                <h3 className="font-semibold text-foreground">AI Analysis Results</h3>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="bg-background/50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Shield className="w-4 h-4 text-success" />
+                    <span className="text-xs text-muted-foreground">Credibility Score</span>
+                  </div>
+                  <p className={`text-xl font-bold ${
+                    aiAnalysis.credibilityScore >= 70 ? 'text-success' : 
+                    aiAnalysis.credibilityScore >= 40 ? 'text-warning' : 'text-destructive'
+                  }`}>
+                    {aiAnalysis.credibilityScore}%
+                  </p>
+                </div>
+                <div className="bg-background/50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="w-4 h-4 text-accent" />
+                    <span className="text-xs text-muted-foreground">Urgency Level</span>
+                  </div>
+                  <p className={`text-xl font-bold ${
+                    aiAnalysis.urgencyScore >= 7 ? 'text-destructive' : 
+                    aiAnalysis.urgencyScore >= 4 ? 'text-warning' : 'text-muted-foreground'
+                  }`}>
+                    {aiAnalysis.urgencyScore}/10
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <p className="text-xs text-muted-foreground mb-1">Suggested Department</p>
+                <p className="text-sm font-medium text-foreground">{aiAnalysis.suggestedDepartment}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Keywords</p>
+                <div className="flex flex-wrap gap-2">
+                  {aiAnalysis.keywords.map((keyword, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-accent/10 text-accent text-xs rounded-full">
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button variant="accent" onClick={() => {
               setSubmitted(false);
               setFormData({ title: '', description: '', name: '', email: '', phone: '' });
               setSelectedCategory('');
               setLocation(null);
+              setAiAnalysis(null);
+              setComplaintId('');
             }}>
               Submit Another Complaint
             </Button>
@@ -316,18 +474,23 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
         </Card>
 
         {/* Submit Button */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-3">
           <Button
             type="submit"
             variant={reportType === 'anonymous' ? 'anonymous' : 'hero'}
             size="xl"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isAnalyzing}
             className="min-w-[250px] gap-2"
           >
-            {isSubmitting ? (
+            {isAnalyzing ? (
+              <>
+                <Brain className="w-5 h-5 animate-pulse" />
+                Analyzing with AI...
+              </>
+            ) : isSubmitting ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Processing...
+                Submitting...
               </>
             ) : (
               <>
@@ -336,6 +499,10 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
               </>
             )}
           </Button>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Brain className="w-3 h-3" />
+            Your complaint will be analyzed by AI for credibility and routing
+          </p>
         </div>
       </form>
     </motion.div>
