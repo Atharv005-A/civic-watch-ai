@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   FileText, 
@@ -11,7 +11,9 @@ import {
   Info,
   Brain,
   Shield,
-  TrendingUp
+  TrendingUp,
+  X,
+  ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +36,11 @@ interface AIAnalysis {
   summary: string;
 }
 
+interface UploadedFile {
+  file: File;
+  preview: string;
+}
+
 interface ComplaintFormProps {
   defaultType?: 'civic' | 'anonymous';
 }
@@ -49,6 +56,9 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
     email: '',
     phone: '',
   });
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -60,6 +70,77 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
 
   const handleLocationSelect = (lat: number, lng: number, address: string) => {
     setLocation({ lat, lng, address });
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxFiles = 5;
+
+    if (uploadedFiles.length + files.length > maxFiles) {
+      toast.error(`Maximum ${maxFiles} files allowed`);
+      return;
+    }
+
+    const newFiles: UploadedFile[] = [];
+    Array.from(files).forEach((file) => {
+      if (!allowedTypes.includes(file.type)) {
+        toast.error(`${file.name}: Invalid file type. Use JPG, PNG, WebP or PDF`);
+        return;
+      }
+      if (file.size > maxSize) {
+        toast.error(`${file.name}: File too large. Max 10MB`);
+        return;
+      }
+
+      const preview = file.type.startsWith('image/') 
+        ? URL.createObjectURL(file) 
+        : '';
+      newFiles.push({ file, preview });
+    });
+
+    setUploadedFiles((prev) => [...prev, ...newFiles]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles((prev) => {
+      const newFiles = [...prev];
+      if (newFiles[index].preview) {
+        URL.revokeObjectURL(newFiles[index].preview);
+      }
+      newFiles.splice(index, 1);
+      return newFiles;
+    });
+  };
+
+  const uploadEvidenceFiles = async (complaintId: string): Promise<string[]> => {
+    const urls: string[] = [];
+    
+    for (const { file } of uploadedFiles) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${complaintId}/${crypto.randomUUID()}.${fileExt}`;
+      
+      const { error } = await supabase.storage
+        .from('complaint-evidence')
+        .upload(fileName, file);
+      
+      if (error) {
+        console.error('Upload error:', error);
+        continue;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from('complaint-evidence')
+        .getPublicUrl(fileName);
+      
+      urls.push(urlData.publicUrl);
+    }
+    
+    return urls;
   };
 
   const analyzeComplaint = async (): Promise<AIAnalysis | null> => {
@@ -113,6 +194,7 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
     }
 
     setIsSubmitting(true);
+    setIsUploading(false);
 
     try {
       // Run AI analysis
@@ -123,6 +205,14 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
       const newComplaintId = reportType === 'anonymous' 
         ? newAnonymousId 
         : 'CIV-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      // Upload evidence files
+      let evidenceUrls: string[] = [];
+      if (uploadedFiles.length > 0) {
+        setIsUploading(true);
+        evidenceUrls = await uploadEvidenceFiles(newComplaintId);
+        setIsUploading(false);
+      }
 
       // Determine priority based on urgency score
       let priority: 'low' | 'medium' | 'high' | 'critical' = 'medium';
@@ -155,6 +245,7 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
         ai_urgency_score: analysis?.urgencyScore ?? null,
         ai_keywords: analysis?.keywords ?? null,
         ai_suggested_department: analysis?.suggestedDepartment ?? null,
+        evidence: evidenceUrls.length > 0 ? evidenceUrls : null,
       });
 
       if (error) {
@@ -265,6 +356,8 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
               setLocation(null);
               setAiAnalysis(null);
               setComplaintId('');
+              uploadedFiles.forEach(f => f.preview && URL.revokeObjectURL(f.preview));
+              setUploadedFiles([]);
             }}>
               Submit Another Complaint
             </Button>
@@ -454,22 +547,89 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
           </Card>
         )}
 
-        {/* Evidence Upload */}
         <Card variant="glass">
           <CardHeader>
-            <CardTitle className="text-lg">Evidence (Optional)</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-accent" />
+              Evidence (Optional)
+            </CardTitle>
             <CardDescription>Upload photos or documents to support your complaint</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-accent/50 transition-colors cursor-pointer">
+          <CardContent className="space-y-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add('border-accent', 'bg-accent/5');
+              }}
+              onDragLeave={(e) => {
+                e.currentTarget.classList.remove('border-accent', 'bg-accent/5');
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('border-accent', 'bg-accent/5');
+                const dt = e.dataTransfer;
+                if (dt.files) {
+                  const input = fileInputRef.current;
+                  if (input) {
+                    const dataTransfer = new DataTransfer();
+                    Array.from(dt.files).forEach(f => dataTransfer.items.add(f));
+                    input.files = dataTransfer.files;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                  }
+                }
+              }}
+              className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-accent/50 transition-colors cursor-pointer"
+            >
               <Upload className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground mb-1">
                 Drag and drop files here, or click to browse
               </p>
               <p className="text-xs text-muted-foreground">
-                Max 5 files, up to 10MB each (JPG, PNG, PDF)
+                Max 5 files, up to 10MB each (JPG, PNG, WebP, PDF)
               </p>
             </div>
+
+            {/* Uploaded Files Preview */}
+            {uploadedFiles.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="relative group">
+                    <div className="aspect-square rounded-lg overflow-hidden bg-muted border border-border">
+                      {file.preview ? (
+                        <img 
+                          src={file.preview} 
+                          alt={file.file.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-2">
+                          <FileText className="w-8 h-8 text-muted-foreground mb-1" />
+                          <span className="text-xs text-muted-foreground text-center truncate w-full">
+                            {file.file.name}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -479,13 +639,18 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
             type="submit"
             variant={reportType === 'anonymous' ? 'anonymous' : 'hero'}
             size="xl"
-            disabled={isSubmitting || isAnalyzing}
+            disabled={isSubmitting || isAnalyzing || isUploading}
             className="min-w-[250px] gap-2"
           >
             {isAnalyzing ? (
               <>
                 <Brain className="w-5 h-5 animate-pulse" />
                 Analyzing with AI...
+              </>
+            ) : isUploading ? (
+              <>
+                <Upload className="w-5 h-5 animate-bounce" />
+                Uploading Evidence...
               </>
             ) : isSubmitting ? (
               <>
