@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Locate, ZoomIn, ZoomOut } from 'lucide-react';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import 'leaflet.markercluster';
+import { MapPin, Locate, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface LocationMapProps {
@@ -94,7 +97,7 @@ const createSelectedIcon = () => {
 };
 
 export function LocationMap({ 
-  center = [28.6139, 77.2090], // Delhi coordinates
+  center = [28.6139, 77.2090], // Delhi coordinates as default
   zoom = 12,
   markers = [],
   onLocationSelect,
@@ -104,12 +107,15 @@ export function LocationMap({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const handleLocateMe = () => {
     if (!mapInstanceRef.current) return;
     
     setIsLocating(true);
+    setLocationError(null);
     
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -117,7 +123,7 @@ export function LocationMap({
           const { latitude, longitude } = position.coords;
           const map = mapInstanceRef.current!;
           
-          map.flyTo([latitude, longitude], 15, {
+          map.flyTo([latitude, longitude], 16, {
             duration: 1.5
           });
 
@@ -134,13 +140,13 @@ export function LocationMap({
             // Reverse geocode
             try {
               const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
               );
               const data = await response.json();
-              const address = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+              const address = data.display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
               onLocationSelect(latitude, longitude, address);
             } catch {
-              onLocationSelect(latitude, longitude, `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+              onLocationSelect(latitude, longitude, `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
             }
           }
           
@@ -148,27 +154,47 @@ export function LocationMap({
         },
         (error) => {
           console.error('Geolocation error:', error);
+          let errorMessage = 'Unable to get location';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location permission denied';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location unavailable';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out';
+              break;
+          }
+          setLocationError(errorMessage);
           setIsLocating(false);
+          setTimeout(() => setLocationError(null), 3000);
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { 
+          enableHighAccuracy: true, 
+          timeout: 15000,
+          maximumAge: 0
+        }
       );
     } else {
+      setLocationError('Geolocation not supported');
       setIsLocating(false);
+      setTimeout(() => setLocationError(null), 3000);
     }
   };
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Initialize map with better styling
+    // Initialize map
     const map = L.map(mapRef.current, {
       center: center,
       zoom: zoom,
-      zoomControl: false, // We'll add custom controls
+      zoomControl: false,
       attributionControl: true,
     });
 
-    // Use CartoDB tiles for a more modern look
+    // Use CartoDB tiles for a modern look
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
       maxZoom: 19
@@ -181,15 +207,48 @@ export function LocationMap({
 
     mapInstanceRef.current = map;
 
-    // Add existing markers
+    // Create marker cluster group with custom styling
+    const clusterGroup = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      disableClusteringAtZoom: 17,
+      maxClusterRadius: 50,
+      iconCreateFunction: (cluster) => {
+        const count = cluster.getChildCount();
+        let size = 'small';
+        let dimension = 40;
+        
+        if (count >= 10 && count < 50) {
+          size = 'medium';
+          dimension = 50;
+        } else if (count >= 50) {
+          size = 'large';
+          dimension = 60;
+        }
+
+        return L.divIcon({
+          html: `
+            <div class="cluster-marker cluster-${size}">
+              <span>${count}</span>
+            </div>
+          `,
+          className: 'custom-cluster-icon',
+          iconSize: L.point(dimension, dimension),
+        });
+      }
+    });
+
+    clusterGroupRef.current = clusterGroup;
+
+    // Add existing markers to cluster group
     markers.forEach(marker => {
       const icon = createCustomIcon(marker.type, marker.status);
-      L.marker(marker.position, { icon })
+      const markerInstance = L.marker(marker.position, { icon })
         .bindPopup(`
           <div style="min-width: 180px; padding: 8px;">
             <strong style="font-size: 14px; color: #1a1a2e;">${marker.title}</strong>
             <br/>
-            <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+            <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <span style="
                 display: inline-block;
                 padding: 4px 12px;
@@ -213,9 +272,11 @@ export function LocationMap({
           </div>
         `, {
           className: 'custom-popup'
-        })
-        .addTo(map);
+        });
+      clusterGroup.addLayer(markerInstance);
     });
+
+    map.addLayer(clusterGroup);
 
     // Interactive mode - allow clicking to set location
     if (interactive && onLocationSelect) {
@@ -234,15 +295,29 @@ export function LocationMap({
         // Reverse geocode to get address
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
           );
           const data = await response.json();
-          const address = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          const address = data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
           onLocationSelect(lat, lng, address);
         } catch {
-          onLocationSelect(lat, lng, `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+          onLocationSelect(lat, lng, `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         }
       });
+
+      // Auto-locate on first load for interactive maps
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            map.setView([latitude, longitude], 14);
+          },
+          () => {
+            // Silently fail, user can manually locate
+          },
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+        );
+      }
     }
 
     return () => {
@@ -266,10 +341,24 @@ export function LocationMap({
             size="icon"
             onClick={handleLocateMe}
             disabled={isLocating}
-            className="bg-card shadow-lg hover:bg-card/90"
+            className="bg-card shadow-lg hover:bg-card/90 relative"
+            title="Use my current location"
           >
-            <Locate className={`w-4 h-4 ${isLocating ? 'animate-pulse' : ''}`} />
+            {isLocating ? (
+              <Navigation className="w-4 h-4 animate-spin" />
+            ) : (
+              <Locate className="w-4 h-4" />
+            )}
           </Button>
+        </div>
+      )}
+
+      {/* Location Error Toast */}
+      {locationError && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000]">
+          <div className="bg-destructive text-destructive-foreground px-4 py-2 rounded-lg shadow-lg text-sm">
+            {locationError}
+          </div>
         </div>
       )}
 
@@ -279,13 +368,13 @@ export function LocationMap({
           <div className="bg-card/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-border/50">
             <p className="text-xs text-muted-foreground flex items-center gap-2">
               <MapPin className="w-3 h-3 text-accent" />
-              Click on the map to select location, or use the locate button
+              Click on the map to select location, or use the locate button for GPS
             </p>
           </div>
         </div>
       )}
 
-      {/* Map loading styles */}
+      {/* Map styles */}
       <style>{`
         @keyframes pulse-marker {
           0%, 100% {
@@ -324,6 +413,56 @@ export function LocationMap({
         
         .leaflet-control-zoom a:hover {
           background: hsl(var(--muted)) !important;
+        }
+
+        /* Cluster marker styles */
+        .custom-cluster-icon {
+          background: transparent;
+        }
+
+        .cluster-marker {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          font-weight: 700;
+          color: white;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+          border: 3px solid white;
+        }
+
+        .cluster-small {
+          width: 40px;
+          height: 40px;
+          font-size: 14px;
+          background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        }
+
+        .cluster-medium {
+          width: 50px;
+          height: 50px;
+          font-size: 16px;
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .cluster-large {
+          width: 60px;
+          height: 60px;
+          font-size: 18px;
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        /* Override default MarkerCluster styles */
+        .marker-cluster-small,
+        .marker-cluster-medium,
+        .marker-cluster-large {
+          background: transparent !important;
+        }
+
+        .marker-cluster-small div,
+        .marker-cluster-medium div,
+        .marker-cluster-large div {
+          background: transparent !important;
         }
       `}</style>
     </div>
