@@ -74,8 +74,9 @@ const HeatmapPage = () => {
               <Card variant="glass">
                 <CardContent className="p-0">
                   <LocationMap 
+                    center={[28.6139, 77.2090]}
                     markers={mapMarkers}
-                    zoom={11}
+                    zoom={13}
                     className="h-[600px] rounded-xl"
                   />
                 </CardContent>
