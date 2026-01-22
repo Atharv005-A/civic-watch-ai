@@ -8,7 +8,8 @@ import {
   Search,
   MoreVertical,
   UserCheck,
-  UserX
+  BarChart3,
+  Layers
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -18,6 +19,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
+import { ReportGenerator } from '@/components/admin/ReportGenerator';
+import { CategoryManager } from '@/components/admin/CategoryManager';
+import { useComplaintStats } from '@/hooks/useComplaints';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +33,7 @@ import { toast } from 'sonner';
 const AdminPage = () => {
   const { role, isAdmin, isAuthority } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const { data: stats } = useComplaintStats();
 
   // Mock data for demo
   const mockUsers = [
@@ -53,7 +58,7 @@ const AdminPage = () => {
               Admin Panel
             </h1>
             <p className="text-muted-foreground">
-              Manage users, roles, and system settings
+              Manage users, categories, generate reports, and system settings
             </p>
             <div className="mt-2">
               <Badge variant={isAdmin ? 'destructive' : 'info'}>
@@ -65,10 +70,10 @@ const AdminPage = () => {
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
-              { label: 'Total Users', value: '1,247', icon: Users, color: 'bg-accent' },
-              { label: 'Authorities', value: '45', icon: Shield, color: 'bg-info' },
-              { label: 'Pending Complaints', value: '156', icon: FileText, color: 'bg-warning' },
-              { label: 'Active Today', value: '89', icon: UserCheck, color: 'bg-success' },
+              { label: 'Total Complaints', value: stats?.totalComplaints || 0, icon: FileText, color: 'bg-accent' },
+              { label: 'Pending', value: stats?.pendingComplaints || 0, icon: Users, color: 'bg-warning' },
+              { label: 'Resolved', value: stats?.resolvedComplaints || 0, icon: UserCheck, color: 'bg-success' },
+              { label: 'Resolution Rate', value: `${stats?.resolutionRate || 0}%`, icon: BarChart3, color: 'bg-info' },
             ].map((stat, index) => (
               <motion.div
                 key={stat.label}
@@ -92,12 +97,41 @@ const AdminPage = () => {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="users" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="users">Users</TabsTrigger>
-              <TabsTrigger value="complaints">Complaints</TabsTrigger>
-              {isAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
+          <Tabs defaultValue="reports" className="space-y-6">
+            <TabsList className="flex-wrap">
+              <TabsTrigger value="reports" className="gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Reports
+              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="categories" className="gap-2">
+                  <Layers className="w-4 h-4" />
+                  Categories
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="users" className="gap-2">
+                <Users className="w-4 h-4" />
+                Users
+              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="settings" className="gap-2">
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </TabsTrigger>
+              )}
             </TabsList>
+
+            {/* Reports Tab */}
+            <TabsContent value="reports">
+              <ReportGenerator />
+            </TabsContent>
+
+            {/* Categories Tab (Admin only) */}
+            {isAdmin && (
+              <TabsContent value="categories">
+                <CategoryManager />
+              </TabsContent>
+            )}
 
             {/* Users Tab */}
             <TabsContent value="users">
@@ -180,25 +214,6 @@ const AdminPage = () => {
                       </tbody>
                     </table>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Complaints Tab */}
-            <TabsContent value="complaints">
-              <Card variant="glass">
-                <CardHeader>
-                  <CardTitle>Complaint Management</CardTitle>
-                  <CardDescription>Review, assign, and resolve complaints</CardDescription>
-                </CardHeader>
-                <CardContent className="text-center py-12">
-                  <FileText className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground">
-                    Complaint management features coming soon.
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    View complaints in the Dashboard for now.
-                  </p>
                 </CardContent>
               </Card>
             </TabsContent>
