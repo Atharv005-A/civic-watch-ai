@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   FileText, 
@@ -13,15 +14,18 @@ import {
   Shield,
   TrendingUp,
   X,
-  ImageIcon
+  ImageIcon,
+  Heart,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import { LocationMap } from '@/components/map/LocationMap';
-import { CIVIC_CATEGORIES, ANONYMOUS_CATEGORIES } from '@/types/complaint';
+import { useCivicCategories, useAnonymousCategories, useSpecialCategories, ComplaintCategory } from '@/hooks/useCategories';
 import { generateAnonymousId } from '@/lib/mockData';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,12 +46,16 @@ interface UploadedFile {
 }
 
 interface ComplaintFormProps {
-  defaultType?: 'civic' | 'anonymous';
+  defaultType?: 'civic' | 'anonymous' | 'special';
+  defaultCategory?: string;
 }
 
-export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
-  const [reportType, setReportType] = useState<'civic' | 'anonymous'>(defaultType);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+export function ComplaintForm({ defaultType = 'civic', defaultCategory }: ComplaintFormProps) {
+  const [searchParams] = useSearchParams();
+  const urlCategory = searchParams.get('category');
+  
+  const [reportType, setReportType] = useState<'civic' | 'anonymous' | 'special'>(defaultType);
+  const [selectedCategory, setSelectedCategory] = useState<string>(defaultCategory || urlCategory || '');
   const [location, setLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -66,7 +74,23 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [complaintId, setComplaintId] = useState('');
 
-  const categories = reportType === 'civic' ? CIVIC_CATEGORIES : ANONYMOUS_CATEGORIES;
+  const { data: civicCategories, isLoading: civicLoading } = useCivicCategories();
+  const { data: anonymousCategories, isLoading: anonLoading } = useAnonymousCategories();
+  const { data: specialCategories, isLoading: specialLoading } = useSpecialCategories();
+
+  const isLoadingCategories = civicLoading || anonLoading || specialLoading;
+
+  const categories: ComplaintCategory[] = 
+    reportType === 'civic' ? (civicCategories || []) : 
+    reportType === 'anonymous' ? (anonymousCategories || []) : 
+    (specialCategories || []);
+
+  // Update report type if URL has category from special
+  useEffect(() => {
+    if (urlCategory && specialCategories?.some(c => c.slug === urlCategory)) {
+      setReportType('special');
+    }
+  }, [urlCategory, specialCategories]);
 
   const handleLocationSelect = (lat: number, lng: number, address: string) => {
     setLocation({ lat, lng, address });
@@ -377,11 +401,11 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
       className="max-w-4xl mx-auto"
     >
       {/* Report Type Toggle */}
-      <div className="flex justify-center gap-4 mb-8">
+      <div className="flex flex-wrap justify-center gap-3 mb-8">
         <Button
           variant={reportType === 'civic' ? 'accent' : 'outline'}
           size="lg"
-          onClick={() => setReportType('civic')}
+          onClick={() => { setReportType('civic'); setSelectedCategory(''); }}
           className="gap-2"
         >
           <FileText className="w-5 h-5" />
@@ -390,28 +414,40 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
         <Button
           variant={reportType === 'anonymous' ? 'anonymous' : 'outline'}
           size="lg"
-          onClick={() => setReportType('anonymous')}
+          onClick={() => { setReportType('anonymous'); setSelectedCategory(''); }}
           className="gap-2"
         >
           <Lock className="w-5 h-5" />
-          Anonymous Report
+          Anonymous
+        </Button>
+        <Button
+          variant={reportType === 'special' ? 'default' : 'outline'}
+          size="lg"
+          onClick={() => { setReportType('special'); setSelectedCategory(''); }}
+          className={`gap-2 ${reportType === 'special' ? 'bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600' : ''}`}
+        >
+          <Heart className="w-5 h-5" />
+          Special Report
         </Button>
       </div>
 
       {/* Info Banner */}
       <div className={`mb-8 p-4 rounded-xl flex items-start gap-3 ${
-        reportType === 'anonymous' 
-          ? 'bg-anonymous/10 border border-anonymous/20' 
-          : 'bg-accent/10 border border-accent/20'
+        reportType === 'anonymous' ? 'bg-anonymous/10 border border-anonymous/20' : 
+        reportType === 'special' ? 'bg-pink-500/10 border border-pink-500/20' :
+        'bg-accent/10 border border-accent/20'
       }`}>
-        <Info className={`w-5 h-5 mt-0.5 ${reportType === 'anonymous' ? 'text-anonymous' : 'text-accent'}`} />
+        <Info className={`w-5 h-5 mt-0.5 ${reportType === 'anonymous' ? 'text-anonymous' : reportType === 'special' ? 'text-pink-500' : 'text-accent'}`} />
         <div>
           <h3 className="font-medium text-foreground mb-1">
-            {reportType === 'anonymous' ? 'Anonymous Reporting' : 'Standard Civic Report'}
+            {reportType === 'anonymous' ? 'Anonymous Reporting' : 
+             reportType === 'special' ? 'Special Protection Report' : 'Standard Civic Report'}
           </h3>
           <p className="text-sm text-muted-foreground">
             {reportType === 'anonymous' 
-              ? 'Your identity will be protected. No personal information is required. You will receive a unique tracking ID.'
+              ? 'Your identity will be protected. No personal information is required.'
+              : reportType === 'special'
+              ? 'Report issues related to women, children, or disabled persons. These are handled with priority.'
               : 'Provide your contact details for updates. Your information is kept confidential.'
             }
           </p>
@@ -426,25 +462,33 @@ export function ComplaintForm({ defaultType = 'civic' }: ComplaintFormProps) {
             <CardDescription>Choose the type of issue you want to report</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`p-4 rounded-xl border-2 transition-all text-center ${
-                    selectedCategory === category.id
-                      ? reportType === 'anonymous'
-                        ? 'border-anonymous bg-anonymous/10'
+            {isLoadingCategories ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {Array(8).fill(0).map((_, i) => (
+                  <Skeleton key={i} className="h-20 rounded-xl" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(category.slug)}
+                    className={`p-4 rounded-xl border-2 transition-all text-center ${
+                      selectedCategory === category.slug
+                        ? reportType === 'anonymous' ? 'border-anonymous bg-anonymous/10'
+                        : reportType === 'special' ? 'border-pink-500 bg-pink-500/10'
                         : 'border-accent bg-accent/10'
-                      : 'border-transparent bg-muted/50 hover:bg-muted'
-                  }`}
-                >
-                  <span className="text-2xl block mb-2">{category.icon}</span>
-                  <span className="text-sm font-medium text-foreground">{category.name}</span>
-                </button>
-              ))}
-            </div>
+                        : 'border-transparent bg-muted/50 hover:bg-muted'
+                    }`}
+                  >
+                    <span className="text-2xl block mb-2">{category.icon}</span>
+                    <span className="text-sm font-medium text-foreground">{category.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
