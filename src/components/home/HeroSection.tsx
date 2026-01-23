@@ -1,11 +1,9 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
-  Shield, 
   FileText, 
-  Eye, 
-  MapPin, 
   Brain, 
+  MapPin, 
   Lock,
   ArrowRight,
   CheckCircle,
@@ -14,8 +12,21 @@ import {
   BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useHeroStats } from '@/hooks/useDynamicStats';
+import { useSiteContent } from '@/hooks/useSiteContent';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function HeroSection() {
+  const { data: stats, isLoading: statsLoading } = useHeroStats();
+  const { data: heroContent, isLoading: contentLoading } = useSiteContent('hero');
+
+  const heroStats = [
+    { label: 'Issues Resolved', value: stats?.issuesResolved || 0, icon: CheckCircle },
+    { label: 'Active Reports', value: stats?.activeReports || 0, icon: AlertTriangle },
+    { label: 'Citizens Served', value: stats?.citizensServed || 0, icon: Users },
+    { label: 'Resolution Rate', value: `${stats?.resolutionRate || 0}%`, icon: BarChart3 },
+  ];
+
   return (
     <section className="relative min-h-screen hero-gradient overflow-hidden">
       {/* Background Pattern */}
@@ -47,10 +58,16 @@ export function HeroSection() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6"
           >
-            Smart Civic Issue
-            <span className="block mt-2">
-              <span className="text-accent">Prediction</span> & Protection
-            </span>
+            {contentLoading ? (
+              <Skeleton className="h-16 w-3/4 mx-auto bg-white/10" />
+            ) : (
+              <>
+                {heroContent?.title || 'Smart Civic Issue'}
+                <span className="block mt-2">
+                  <span className="text-accent">{heroContent?.subtitle || 'Prediction'}</span> & Protection
+                </span>
+              </>
+            )}
           </motion.h1>
 
           {/* Subtitle */}
@@ -60,8 +77,7 @@ export function HeroSection() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg sm:text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            Report civic issues with AI-powered verification. Submit sensitive complaints anonymously. 
-            Help authorities predict and prevent problems before they occur.
+            {heroContent?.content || 'Report civic issues with AI-powered verification. Submit sensitive complaints anonymously. Help authorities predict and prevent problems before they occur.'}
           </motion.p>
 
           {/* CTA Buttons */}
@@ -92,21 +108,28 @@ export function HeroSection() {
             transition={{ duration: 0.5, delay: 0.4 }}
             className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto"
           >
-            {[
-              { label: 'Issues Resolved', value: '12,847', icon: CheckCircle },
-              { label: 'Active Reports', value: '347', icon: AlertTriangle },
-              { label: 'Citizens Served', value: '50K+', icon: Users },
-              { label: 'Resolution Rate', value: '94%', icon: BarChart3 },
-            ].map((stat, index) => (
-              <div
-                key={stat.label}
-                className="glass-dark p-4 rounded-xl text-center"
-              >
-                <stat.icon className="w-5 h-5 text-accent mx-auto mb-2" />
-                <div className="font-display text-2xl font-bold text-white">{stat.value}</div>
-                <div className="text-xs text-white/60">{stat.label}</div>
-              </div>
-            ))}
+            {statsLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="glass-dark p-4 rounded-xl text-center">
+                  <Skeleton className="w-5 h-5 mx-auto mb-2 bg-white/10" />
+                  <Skeleton className="h-8 w-16 mx-auto mb-1 bg-white/10" />
+                  <Skeleton className="h-3 w-20 mx-auto bg-white/10" />
+                </div>
+              ))
+            ) : (
+              heroStats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="glass-dark p-4 rounded-xl text-center"
+                >
+                  <stat.icon className="w-5 h-5 text-accent mx-auto mb-2" />
+                  <div className="font-display text-2xl font-bold text-white">
+                    {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
+                  </div>
+                  <div className="text-xs text-white/60">{stat.label}</div>
+                </div>
+              ))
+            )}
           </motion.div>
         </div>
 
@@ -127,7 +150,7 @@ export function HeroSection() {
             {
               icon: Brain,
               title: 'AI Verification',
-              description: 'Google AI analyzes reports for authenticity, detects fake complaints, and prioritizes urgency.',
+              description: 'AI analyzes reports for authenticity, detects fake complaints, and prioritizes urgency.',
               color: 'text-info'
             },
             {
@@ -136,7 +159,7 @@ export function HeroSection() {
               description: 'Heatmaps and trend analysis help authorities predict and prevent future issues.',
               color: 'text-warning'
             },
-          ].map((feature, index) => (
+          ].map((feature) => (
             <div
               key={feature.title}
               className="glass-dark p-6 rounded-2xl hover:bg-white/10 transition-all duration-300 group"
