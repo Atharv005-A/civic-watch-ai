@@ -13,18 +13,61 @@ import { Button } from '@/components/ui/button';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
 import { ComplaintsList } from '@/components/dashboard/ComplaintsList';
 import { LocationMap } from '@/components/map/LocationMap';
-import { mockComplaints } from '@/lib/mockData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useComplaintsForMap, useComplaintsData } from '@/hooks/useComplaintsData';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 const DashboardPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
+  const { data: mapMarkers, isLoading: markersLoading } = useComplaintsForMap();
+  const { data: complaints } = useComplaintsData();
+  const queryClient = useQueryClient();
 
-  const mapMarkers = mockComplaints.map(c => ({
-    position: [c.location.lat, c.location.lng] as [number, number],
-    title: c.title,
-    type: c.type,
-    status: c.status,
-  }));
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['complaints-data'] });
+    queryClient.invalidateQueries({ queryKey: ['complaints-map'] });
+    queryClient.invalidateQueries({ queryKey: ['dynamic-stats'] });
+    toast.success('Data refreshed');
+  };
+
+  const handleExport = () => {
+    if (!complaints || complaints.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+
+    const headers = ['ID', 'Type', 'Category', 'Title', 'Status', 'Priority', 'Location', 'Created'];
+    const rows = complaints.map(c => [
+      c.complaint_id,
+      c.type,
+      c.category,
+      `"${c.title.replace(/"/g, '""')}"`,
+      c.status,
+      c.priority,
+      `"${c.location_address}"`,
+      new Date(c.created_at).toLocaleDateString(),
+    ]);
+    
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `complaints-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Export complete');
+  };
+
+  // Filter complaints by status
+  const filterByStatus = (status: string | null) => {
+    if (!complaints) return [];
+    if (status === null) return complaints;
+    if (status === 'anonymous') return complaints.filter(c => c.type === 'anonymous');
+    return complaints.filter(c => c.status === status);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -42,11 +85,11 @@ const DashboardPage = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleRefresh}>
                 <RefreshCw className="w-4 h-4" />
                 Refresh
               </Button>
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
                 <Download className="w-4 h-4" />
                 Export
               </Button>
@@ -107,8 +150,26 @@ const DashboardPage = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 >
+                  {markersLoading ? (
+                    <Skeleton className="h-[600px] w-full rounded-xl" />
+                  ) : (
+                    <LocationMap 
+                      markers={mapMarkers || []}
+                      zoom={11}
+                      className="h-[600px]"
+                    />
+                  )}
+                </motion.div>
+              ) : (
+                <ComplaintsList />
+              )}
+            </TabsContent>
+
+            <TabsContent value="pending" className="mt-0">
+              {viewMode === 'map' ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <LocationMap 
-                    markers={mapMarkers}
+                    markers={(mapMarkers || []).filter(m => m.status === 'pending')}
                     zoom={11}
                     className="h-[600px]"
                   />
@@ -118,16 +179,32 @@ const DashboardPage = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="pending" className="mt-0">
-              <ComplaintsList />
-            </TabsContent>
-
             <TabsContent value="resolved" className="mt-0">
-              <ComplaintsList />
+              {viewMode === 'map' ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  <LocationMap 
+                    markers={(mapMarkers || []).filter(m => m.status === 'resolved')}
+                    zoom={11}
+                    className="h-[600px]"
+                  />
+                </motion.div>
+              ) : (
+                <ComplaintsList />
+              )}
             </TabsContent>
 
             <TabsContent value="anonymous" className="mt-0">
-              <ComplaintsList />
+              {viewMode === 'map' ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  <LocationMap 
+                    markers={(mapMarkers || []).filter(m => m.type === 'anonymous')}
+                    zoom={11}
+                    className="h-[600px]"
+                  />
+                </motion.div>
+              ) : (
+                <ComplaintsList />
+              )}
             </TabsContent>
           </Tabs>
         </div>

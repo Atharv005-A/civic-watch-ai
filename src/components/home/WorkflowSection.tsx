@@ -1,15 +1,17 @@
 import { motion } from 'framer-motion';
 import { 
   FileText, 
-  Brain, 
   Shield, 
+  Brain, 
   MapPin, 
   Bell, 
   CheckCircle,
   ArrowRight
 } from 'lucide-react';
+import { useSiteContent } from '@/hooks/useSiteContent';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const steps = [
+const defaultSteps = [
   {
     icon: FileText,
     title: 'Submit Report',
@@ -19,19 +21,19 @@ const steps = [
   {
     icon: Shield,
     title: 'Security Check',
-    description: 'Google reCAPTCHA and Firebase Authentication verify your submission.',
+    description: 'Authentication and verification to ensure secure submissions.',
     color: 'bg-info'
   },
   {
     icon: Brain,
     title: 'AI Analysis',
-    description: 'Google NLP & Vision API analyze content, detect fakes, and score credibility.',
+    description: 'AI analyzes content, detects fakes, and scores credibility.',
     color: 'bg-anonymous'
   },
   {
     icon: MapPin,
     title: 'Location Processing',
-    description: 'Google Maps geocodes location and identifies the responsible ward/department.',
+    description: 'Maps geocode location and identify the responsible ward/department.',
     color: 'bg-warning'
   },
   {
@@ -49,6 +51,8 @@ const steps = [
 ];
 
 export function WorkflowSection() {
+  const { data: content, isLoading } = useSiteContent('workflow');
+
   return (
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
@@ -61,24 +65,33 @@ export function WorkflowSection() {
           >
             HOW IT WORKS
           </motion.span>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4"
-          >
-            Complete System Workflow
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-muted-foreground"
-          >
-            From complaint submission to resolution - powered by AI and Google Technologies
-          </motion.p>
+          {isLoading ? (
+            <>
+              <Skeleton className="h-10 w-3/4 mx-auto mb-4" />
+              <Skeleton className="h-6 w-1/2 mx-auto" />
+            </>
+          ) : (
+            <>
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4"
+              >
+                {content?.title || 'Complete System Workflow'}
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="text-muted-foreground"
+              >
+                {content?.subtitle || 'From complaint submission to resolution - powered by AI'}
+              </motion.p>
+            </>
+          )}
         </div>
 
         <div className="relative max-w-5xl mx-auto">
@@ -86,7 +99,7 @@ export function WorkflowSection() {
           <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-accent via-anonymous to-success hidden lg:block" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {steps.map((step, index) => (
+            {defaultSteps.map((step, index) => (
               <motion.div
                 key={step.title}
                 initial={{ opacity: 0, y: 30 }}
@@ -115,7 +128,7 @@ export function WorkflowSection() {
                   </p>
 
                   {/* Arrow (on larger screens) */}
-                  {index < steps.length - 1 && (
+                  {index < defaultSteps.length - 1 && (
                     <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
                       <ArrowRight className="w-6 h-6 text-muted-foreground/30" />
                     </div>

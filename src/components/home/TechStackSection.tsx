@@ -1,14 +1,14 @@
 import { motion } from 'framer-motion';
 import { 
-  Database, 
   Lock, 
   Map, 
   Brain, 
-  Cloud,
   Zap,
   Shield,
   Eye
 } from 'lucide-react';
+import { useSiteContent } from '@/hooks/useSiteContent';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const technologies = [
   {
@@ -16,32 +16,32 @@ const technologies = [
     items: [
       { name: 'React + TypeScript', icon: '⚛️' },
       { name: 'Tailwind CSS', icon: '🎨' },
-      { name: 'Google Fonts', icon: '🔤' },
-      { name: 'reCAPTCHA v3', icon: '🤖' },
+      { name: 'Framer Motion', icon: '✨' },
+      { name: 'Shadcn UI', icon: '🎯' },
     ]
   },
   {
     category: 'Backend',
     items: [
-      { name: 'Laravel (PHP)', icon: '🐘' },
-      { name: 'REST APIs', icon: '🔌' },
-      { name: 'MVC Architecture', icon: '📐' },
+      { name: 'Supabase', icon: '⚡' },
+      { name: 'Edge Functions', icon: '🔌' },
+      { name: 'PostgreSQL', icon: '🐘' },
     ]
   },
   {
-    category: 'Database',
+    category: 'Storage',
     items: [
-      { name: 'MySQL', icon: '🗄️' },
-      { name: 'Firebase Firestore', icon: '🔥' },
-      { name: 'Cloud Storage', icon: '☁️' },
+      { name: 'Supabase Storage', icon: '📁' },
+      { name: 'Realtime Updates', icon: '🔄' },
+      { name: 'Cloud CDN', icon: '☁️' },
     ]
   },
   {
-    category: 'Google AI',
+    category: 'AI & Maps',
     items: [
-      { name: 'Natural Language API', icon: '💬' },
-      { name: 'Vision API', icon: '👁️' },
-      { name: 'Vertex AI', icon: '🧠' },
+      { name: 'AI Analysis', icon: '🧠' },
+      { name: 'OpenStreetMap', icon: '🗺️' },
+      { name: 'Geolocation', icon: '📍' },
     ]
   },
 ];
@@ -50,12 +50,14 @@ const features = [
   { icon: Brain, title: 'AI Verification', desc: 'Fake report detection' },
   { icon: Map, title: 'Smart Mapping', desc: 'Location intelligence' },
   { icon: Lock, title: 'Anonymous Mode', desc: 'Identity protection' },
-  { icon: Shield, title: 'Encrypted Data', desc: 'AES encryption' },
+  { icon: Shield, title: 'Secure Data', desc: 'RLS protection' },
   { icon: Eye, title: 'Real-time Tracking', desc: 'Live status updates' },
-  { icon: Zap, title: 'Instant Alerts', desc: 'FCM notifications' },
+  { icon: Zap, title: 'Instant Alerts', desc: 'Push notifications' },
 ];
 
 export function TechStackSection() {
+  const { data: content, isLoading } = useSiteContent('tech-stack');
+
   return (
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
@@ -68,24 +70,33 @@ export function TechStackSection() {
           >
             POWERED BY
           </motion.span>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4"
-          >
-            Technology Stack
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-muted-foreground"
-          >
-            Built with industry-leading Google Technologies for reliability, security, and intelligence
-          </motion.p>
+          {isLoading ? (
+            <>
+              <Skeleton className="h-10 w-3/4 mx-auto mb-4" />
+              <Skeleton className="h-6 w-1/2 mx-auto" />
+            </>
+          ) : (
+            <>
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4"
+              >
+                {content?.title || 'Technology Stack'}
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="text-muted-foreground"
+              >
+                {content?.subtitle || 'Built with modern technologies for reliability, security, and intelligence'}
+              </motion.p>
+            </>
+          )}
         </div>
 
         {/* Tech Grid */}
@@ -103,7 +114,7 @@ export function TechStackSection() {
                 {tech.category}
               </h3>
               <ul className="space-y-3">
-                {tech.items.map((item, index) => (
+                {tech.items.map((item) => (
                   <li key={item.name} className="flex items-center gap-3">
                     <span className="text-xl">{item.icon}</span>
                     <span className="text-sm text-muted-foreground">{item.name}</span>
@@ -121,7 +132,7 @@ export function TechStackSection() {
           viewport={{ once: true }}
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto"
         >
-          {features.map((feature, index) => (
+          {features.map((feature) => (
             <div
               key={feature.title}
               className="text-center p-4 rounded-xl bg-muted/50 hover:bg-accent/10 transition-colors group"

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -10,14 +11,16 @@ import {
   Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { mockComplaints, getStatusColor, getPriorityColor, getCredibilityColor } from '@/lib/mockData';
-import { Complaint } from '@/types/complaint';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useComplaintsData, ComplaintData } from '@/hooks/useComplaintsData';
+import { useSearch } from '@/hooks/useSearch';
+import { getStatusColor, getPriorityColor, getCredibilityColor } from '@/lib/mockData';
 
 interface ComplaintCardProps {
-  complaint: Complaint;
+  complaint: ComplaintData;
 }
 
 function CredibilityMeter({ score }: { score: number }) {
@@ -63,15 +66,15 @@ function ComplaintCard({ complaint }: ComplaintCardProps) {
                 {isAnonymous ? <Lock className="w-5 h-5" /> : <User className="w-5 h-5" />}
               </div>
               <div>
-                <p className="font-mono text-xs text-muted-foreground">{complaint.id}</p>
+                <p className="font-mono text-xs text-muted-foreground">{complaint.complaint_id}</p>
                 <h3 className="font-medium text-foreground line-clamp-1">{complaint.title}</h3>
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <Badge variant={getStatusColor(complaint.status) as any}>
+              <Badge variant={getStatusColor(complaint.status as any) as any}>
                 {complaint.status.replace('-', ' ')}
               </Badge>
-              <Badge variant={getPriorityColor(complaint.priority) as any} className="text-xs">
+              <Badge variant={getPriorityColor(complaint.priority as any) as any} className="text-xs">
                 {complaint.priority} priority
               </Badge>
             </div>
@@ -86,11 +89,11 @@ function ComplaintCard({ complaint }: ComplaintCardProps) {
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-4">
             <span className="flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5" />
-              {complaint.location.ward || 'Location Available'}
+              {complaint.location_ward || 'Location Available'}
             </span>
             <span className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" />
-              {new Date(complaint.createdAt).toLocaleDateString()}
+              {new Date(complaint.created_at).toLocaleDateString()}
             </span>
             {complaint.department && (
               <span className="flex items-center gap-1.5">
@@ -104,19 +107,19 @@ function ComplaintCard({ complaint }: ComplaintCardProps) {
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">Credibility Score</span>
-              {complaint.aiAnalysis && (
+              {complaint.ai_fake_probability && (
                 <span className="text-xs text-muted-foreground">
-                  Fake probability: {complaint.aiAnalysis.fakeProbability}%
+                  Fake probability: {complaint.ai_fake_probability}%
                 </span>
               )}
             </div>
-            <CredibilityMeter score={complaint.credibilityScore} />
+            <CredibilityMeter score={complaint.credibility_score} />
           </div>
 
           {/* AI Keywords */}
-          {complaint.aiAnalysis && (
+          {complaint.ai_keywords && complaint.ai_keywords.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-4">
-              {complaint.aiAnalysis.keywords.slice(0, 4).map((keyword) => (
+              {complaint.ai_keywords.slice(0, 4).map((keyword) => (
                 <span 
                   key={keyword}
                   className="px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground"
@@ -144,6 +147,35 @@ function ComplaintCard({ complaint }: ComplaintCardProps) {
 }
 
 export function ComplaintsList() {
+  const { data: complaints, isLoading } = useComplaintsData();
+  const { searchQuery, setSearchQuery, filteredItems } = useSearch(
+    complaints || [],
+    ['title', 'description', 'complaint_id', 'location_address', 'location_ward', 'category']
+  );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-24" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} variant="glass">
+              <CardContent className="p-5">
+                <Skeleton className="h-10 w-10 rounded-xl mb-4" />
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-full mb-4" />
+                <Skeleton className="h-3 w-1/2" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Search and Filters */}
@@ -153,6 +185,8 @@ export function ComplaintsList() {
           <Input 
             placeholder="Search complaints by ID, title, or location..."
             className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <Button variant="outline" className="gap-2">
@@ -162,11 +196,19 @@ export function ComplaintsList() {
       </div>
 
       {/* Complaints Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {mockComplaints.map((complaint) => (
-          <ComplaintCard key={complaint.id} complaint={complaint} />
-        ))}
-      </div>
+      {filteredItems.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">
+            {searchQuery ? 'No complaints match your search' : 'No complaints found'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredItems.map((complaint) => (
+            <ComplaintCard key={complaint.id} complaint={complaint} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
