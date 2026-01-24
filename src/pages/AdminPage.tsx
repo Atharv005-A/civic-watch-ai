@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { ReportGenerator } from '@/components/admin/ReportGenerator';
 import { CategoryManager } from '@/components/admin/CategoryManager';
+import { ComplaintManager } from '@/components/admin/ComplaintManager';
 import { useComplaintStats } from '@/hooks/useComplaints';
 import { useUsers, useUpdateUserRole } from '@/hooks/useUsers';
 import { useSearch } from '@/hooks/useSearch';
@@ -138,8 +139,12 @@ const AdminPage = () => {
           </div>
 
           {/* Main Content Tabs */}
-          <Tabs defaultValue="users" className="space-y-6">
+          <Tabs defaultValue="complaints" className="space-y-6">
             <TabsList>
+              <TabsTrigger value="complaints" className="gap-2">
+                <FileText className="w-4 h-4" />
+                Complaints
+              </TabsTrigger>
               <TabsTrigger value="users" className="gap-2">
                 <Users className="w-4 h-4" />
                 User Management
@@ -157,6 +162,11 @@ const AdminPage = () => {
                 </>
               )}
             </TabsList>
+
+            {/* Complaints Tab */}
+            <TabsContent value="complaints">
+              <ComplaintManager />
+            </TabsContent>
 
             {/* Users Tab */}
             <TabsContent value="users">

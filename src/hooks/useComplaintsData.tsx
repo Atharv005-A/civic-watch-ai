@@ -18,10 +18,12 @@ export interface ComplaintData {
   evidence: string[] | null;
   reporter_name: string | null;
   reporter_email: string | null;
+  reporter_phone: string | null;
   reporter_id: string | null;
   anonymous_id: string | null;
   department: string | null;
   assigned_to: string | null;
+  assigned_worker_name: string | null;
   resolution: string | null;
   created_at: string;
   updated_at: string;
