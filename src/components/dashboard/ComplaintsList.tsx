@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ComplaintDetailModal } from './ComplaintDetailModal';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useComplaintsData, ComplaintData } from '@/hooks/useComplaintsData';
@@ -21,6 +22,7 @@ import { getStatusColor, getPriorityColor, getCredibilityColor } from '@/lib/moc
 
 interface ComplaintCardProps {
   complaint: ComplaintData;
+  onViewDetails: (complaint: ComplaintData) => void;
 }
 
 function CredibilityMeter({ score }: { score: number }) {
@@ -37,7 +39,7 @@ function CredibilityMeter({ score }: { score: number }) {
   );
 }
 
-function ComplaintCard({ complaint }: ComplaintCardProps) {
+function ComplaintCard({ complaint, onViewDetails }: ComplaintCardProps) {
   const isAnonymous = complaint.type === 'anonymous';
   
   return (
@@ -132,11 +134,25 @@ function ComplaintCard({ complaint }: ComplaintCardProps) {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            <Button variant="accent" size="sm" className="flex-1 gap-1.5">
+            <Button 
+              variant="accent" 
+              size="sm" 
+              className="flex-1 gap-1.5"
+              onClick={() => onViewDetails(complaint)}
+            >
               <Eye className="w-4 h-4" />
               View Details
             </Button>
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                window.open(
+                  `https://www.google.com/maps?q=${complaint.location_lat},${complaint.location_lng}`,
+                  '_blank'
+                );
+              }}
+            >
               <MapPin className="w-4 h-4" />
             </Button>
           </div>
@@ -148,10 +164,18 @@ function ComplaintCard({ complaint }: ComplaintCardProps) {
 
 export function ComplaintsList() {
   const { data: complaints, isLoading } = useComplaintsData();
+  const [selectedComplaint, setSelectedComplaint] = useState<ComplaintData | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  
   const { searchQuery, setSearchQuery, filteredItems } = useSearch(
     complaints || [],
     ['title', 'description', 'complaint_id', 'location_address', 'location_ward', 'category']
   );
+
+  const handleViewDetails = (complaint: ComplaintData) => {
+    setSelectedComplaint(complaint);
+    setShowDetailModal(true);
+  };
 
   if (isLoading) {
     return (
@@ -205,10 +229,21 @@ export function ComplaintsList() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredItems.map((complaint) => (
-            <ComplaintCard key={complaint.id} complaint={complaint} />
+            <ComplaintCard 
+              key={complaint.id} 
+              complaint={complaint} 
+              onViewDetails={handleViewDetails}
+            />
           ))}
         </div>
       )}
+
+      {/* Detail Modal */}
+      <ComplaintDetailModal
+        complaint={selectedComplaint}
+        open={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+      />
     </div>
   );
 }

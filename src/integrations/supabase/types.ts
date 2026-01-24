@@ -62,6 +62,7 @@ export type Database = {
           ai_urgency_score: number | null
           anonymous_id: string | null
           assigned_to: string | null
+          assigned_worker_name: string | null
           category: string
           complaint_id: string
           created_at: string
@@ -93,6 +94,7 @@ export type Database = {
           ai_urgency_score?: number | null
           anonymous_id?: string | null
           assigned_to?: string | null
+          assigned_worker_name?: string | null
           category: string
           complaint_id: string
           created_at?: string
@@ -124,6 +126,7 @@ export type Database = {
           ai_urgency_score?: number | null
           anonymous_id?: string | null
           assigned_to?: string | null
+          assigned_worker_name?: string | null
           category?: string
           complaint_id?: string
           created_at?: string
@@ -212,6 +215,42 @@ export type Database = {
           subtitle?: string | null
           title?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_rewards: {
+        Row: {
+          badges: string[] | null
+          complaints_resolved: number
+          complaints_submitted: number
+          created_at: string
+          id: string
+          level: string
+          points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          badges?: string[] | null
+          complaints_resolved?: number
+          complaints_submitted?: number
+          created_at?: string
+          id?: string
+          level?: string
+          points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          badges?: string[] | null
+          complaints_resolved?: number
+          complaints_submitted?: number
+          created_at?: string
+          id?: string
+          level?: string
+          points?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

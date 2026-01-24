@@ -7,8 +7,9 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
-import ReportPage from "./pages/ReportPage";
+import AdminAuthPage from "./pages/AdminAuthPage";
 import DashboardPage from "./pages/DashboardPage";
+import ReportPage from "./pages/ReportPage";
 import HeatmapPage from "./pages/HeatmapPage";
 import AdminPage from "./pages/AdminPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -27,6 +28,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/admin-login" element={<AdminAuthPage />} />
             <Route path="/report" element={<ReportPage />} />
             <Route 
               path="/dashboard" 
