@@ -14,6 +14,7 @@ import HeatmapPage from "./pages/HeatmapPage";
 import AdminPage from "./pages/AdminPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotificationsPage from "./pages/NotificationsPage";
+import LeaderboardPage from "./pages/LeaderboardPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
               } 
             />
             <Route path="/heatmap" element={<HeatmapPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route 
               path="/admin" 
               element={

@@ -293,12 +293,19 @@ const AuthPage = () => {
             </div>
 
             {/* Back to Home */}
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-2">
               <Link 
                 to="/" 
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors block"
               >
                 ← Back to Home
+              </Link>
+              <Link 
+                to="/admin-login" 
+                className="text-sm text-red-400 hover:text-red-300 transition-colors inline-flex items-center gap-1"
+              >
+                <Shield className="w-3 h-3" />
+                Admin Portal
               </Link>
             </div>
           </CardContent>
