@@ -116,6 +116,7 @@ export function ComplaintManager() {
     
     setActionLoading(true);
     try {
+      const oldStatus = selectedComplaint.status;
       const updates: any = { status: newStatus };
       if (newStatus === 'resolved' && resolution.trim()) {
         updates.resolution = resolution.trim();
@@ -128,7 +129,29 @@ export function ComplaintManager() {
       
       if (error) throw error;
       
-      toast.success(`Status updated to ${newStatus}`);
+      // Send email notification if user has email
+      if (selectedComplaint.reporter_email) {
+        try {
+          await supabase.functions.invoke('send-status-notification', {
+            body: {
+              email: selectedComplaint.reporter_email,
+              complaintId: selectedComplaint.complaint_id,
+              title: selectedComplaint.title,
+              oldStatus: oldStatus,
+              newStatus: newStatus,
+              resolution: resolution.trim() || undefined,
+              assignedWorker: selectedComplaint.assigned_worker_name || undefined,
+            },
+          });
+          toast.success(`Status updated and notification sent`);
+        } catch (emailError) {
+          console.error('Failed to send email notification:', emailError);
+          toast.success(`Status updated (email notification failed)`);
+        }
+      } else {
+        toast.success(`Status updated to ${newStatus}`);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['complaints-data'] });
       queryClient.invalidateQueries({ queryKey: ['dynamic-stats'] });
       setShowStatusModal(false);

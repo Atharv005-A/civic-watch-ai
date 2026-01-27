@@ -13,7 +13,8 @@ import {
   LogIn,
   LogOut,
   Settings,
-  ChevronDown
+  ChevronDown,
+  Trophy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,6 +33,7 @@ const navItems = [
   { name: 'Report Issue', path: '/report', icon: FileText },
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Heatmap', path: '/heatmap', icon: MapPin },
+  { name: 'Leaderboard', path: '/leaderboard', icon: Trophy },
 ];
 
 export function Header() {
