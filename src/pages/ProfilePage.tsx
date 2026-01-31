@@ -10,7 +10,7 @@ import { User, Mail, Phone, Shield, Camera } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const ProfilePage = () => {
-  const { user, profile, role } = useAuth();
+  const { user, profile, displayName, avatarUrl, role } = useAuth();
 
   const getInitials = (name: string | null) => {
     if (!name) return 'U';
@@ -40,9 +40,9 @@ const ProfilePage = () => {
               <CardHeader className="text-center pb-2">
                 <div className="relative mx-auto">
                   <Avatar className="w-24 h-24 border-4 border-accent/20">
-                    <AvatarImage src={profile?.avatar_url || ''} />
+                    <AvatarImage src={avatarUrl || ''} />
                     <AvatarFallback className="text-2xl bg-accent text-accent-foreground">
-                      {getInitials(profile?.full_name)}
+                      {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
                   <Button 
@@ -53,7 +53,7 @@ const ProfilePage = () => {
                     <Camera className="w-4 h-4" />
                   </Button>
                 </div>
-                <CardTitle className="mt-4">{profile?.full_name || 'User'}</CardTitle>
+                <CardTitle className="mt-4">{displayName || 'User'}</CardTitle>
                 <CardDescription className="flex items-center justify-center gap-2">
                   <Shield className="w-4 h-4" />
                   {role || 'citizen'}
@@ -67,7 +67,7 @@ const ProfilePage = () => {
                   </Label>
                   <Input 
                     id="name" 
-                    value={profile?.full_name || ''} 
+                    value={displayName || ''} 
                     disabled 
                     className="bg-muted"
                   />

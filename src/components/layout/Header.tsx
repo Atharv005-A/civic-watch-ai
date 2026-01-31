@@ -40,7 +40,7 @@ export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, role, signOut, isAdmin, isAuthority } = useAuth();
+  const { user, displayName, avatarUrl, role, signOut, isAdmin, isAuthority } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -119,11 +119,15 @@ export function Header() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2">
-                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
-                      <User className="w-4 h-4 text-accent" />
+                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="User avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4 text-accent" />
+                      )}
                     </div>
                     <div className="hidden sm:block text-left">
-                      <p className="text-sm font-medium">{profile?.full_name || 'User'}</p>
+                      <p className="text-sm font-medium">{displayName || 'User'}</p>
                       <Badge variant={getRoleBadgeVariant()} className="text-[10px] px-1.5 py-0">
                         {role}
                       </Badge>
@@ -134,8 +138,8 @@ export function Header() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div>
-                      <p className="font-medium">{profile?.full_name || 'User'}</p>
-                      <p className="text-xs text-muted-foreground">{profile?.email}</p>
+                      <p className="font-medium">{displayName || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
