@@ -12,10 +12,28 @@ interface Profile {
   avatar_url: string | null;
 }
 
+// Helper to get display name from various sources
+const getDisplayName = (profile: Profile | null, user: User | null): string | null => {
+  // First try profile full_name
+  if (profile?.full_name) return profile.full_name;
+  
+  // Then try user metadata (from Google OAuth)
+  if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
+  if (user?.user_metadata?.name) return user.user_metadata.name;
+  
+  // Finally try email as fallback
+  if (profile?.email) return profile.email.split('@')[0];
+  if (user?.email) return user.email.split('@')[0];
+  
+  return null;
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  displayName: string | null;
+  avatarUrl: string | null;
   role: AppRole | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -131,10 +149,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
   };
 
+  // Compute display name and avatar from profile and user metadata
+  const displayName = getDisplayName(profile, user);
+  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+
   const value = {
     user,
     session,
     profile,
+    displayName,
+    avatarUrl,
     role,
     loading,
     signUp,
