@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Shield, Mail, Phone, MapPin, Github, Twitter, Linkedin } from 'lucide-react';
+import { Eye, Mail, Phone, MapPin, Github, Twitter, Linkedin } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -10,10 +10,10 @@ export function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
-                <Shield className="w-5 h-5 text-accent-foreground" />
-              </div>
-              <div>
-                <h3 className="font-display font-bold text-lg">CivicGuard</h3>
+              <Eye className="w-5 h-5 text-accent-foreground" />
+            </div>
+            <div>
+              <h3 className="font-display font-bold text-lg">Civic-Eye</h3>
                 <p className="text-xs text-primary-foreground/70">Smart Civic Platform</p>
               </div>
             </div>
@@ -88,7 +88,7 @@ export function Footer() {
 
         <div className="border-t border-primary-foreground/10 mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-primary-foreground/50">
-            © 2024 CivicGuard. All rights reserved. | Powered by Google Technologies
+            © 2024 Civic-Eye. All rights reserved. | Powered by Google Technologies
           </p>
           <div className="flex items-center gap-4">
             <a href="#" className="text-primary-foreground/50 hover:text-accent transition-colors">

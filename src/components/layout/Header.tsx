@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Shield, 
+  Eye, 
   Menu, 
   X, 
   FileText, 
@@ -29,7 +29,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 
 const navItems = [
-  { name: 'Home', path: '/', icon: Shield },
+  { name: 'Home', path: '/', icon: Eye },
   { name: 'Report Issue', path: '/report', icon: FileText },
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Heatmap', path: '/heatmap', icon: MapPin },
@@ -61,12 +61,12 @@ export function Header() {
           <Link to="/" className="flex items-center gap-3 group">
             <div className="relative">
               <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shadow-lg group-hover:shadow-glow transition-shadow">
-                <Shield className="w-5 h-5 text-accent-foreground" />
+                <Eye className="w-5 h-5 text-accent-foreground" />
               </div>
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-success rounded-full border-2 border-card animate-pulse" />
             </div>
             <div className="hidden sm:block">
-              <h1 className="font-display font-bold text-lg text-foreground">CivicGuard</h1>
+              <h1 className="font-display font-bold text-lg text-foreground">Civic-Eye</h1>
               <p className="text-[10px] text-muted-foreground -mt-0.5">Smart Civic Platform</p>
             </div>
           </Link>
