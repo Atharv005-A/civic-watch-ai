@@ -76,7 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
     <!-- Header -->
     <div style="text-align: center; margin-bottom: 32px;">
       <div style="display: inline-block; background: linear-gradient(135deg, #22c55e, #16a34a); padding: 16px 24px; border-radius: 16px;">
-        <span style="font-size: 24px; font-weight: bold; color: white;">🛡️ CivicGuard</span>
+        <span style="font-size: 24px; font-weight: bold; color: white;">👁️ Civic-Eye</span>
       </div>
     </div>
 
@@ -154,7 +154,7 @@ const handler = async (req: Request): Promise<Response> => {
         Track your complaints and rewards on your dashboard
       </p>
       <p style="color: #475569; font-size: 12px; margin: 0;">
-        © ${new Date().getFullYear()} CivicGuard. Making cities smarter, together.
+        © ${new Date().getFullYear()} Civic-Eye. Making cities smarter, together.
       </p>
     </div>
   </div>
@@ -169,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "CivicGuard <onboarding@resend.dev>",
+        from: "Civic-Eye <onboarding@resend.dev>",
         to: [email],
         subject: `${statusEmoji} Your complaint "${title}" is now ${formattedStatus}`,
         html: emailHtml,

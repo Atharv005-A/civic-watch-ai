@@ -123,7 +123,7 @@ const AdminAuthPage = () => {
               <KeyRound className="w-7 h-7 text-white" />
             </div>
             <div className="text-left">
-              <h1 className="font-display font-bold text-xl text-white">CivicGuard</h1>
+              <h1 className="font-display font-bold text-xl text-white">Civic-Eye</h1>
               <p className="text-xs text-red-400">Admin Portal</p>
             </div>
           </Link>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { Eye as EyeIcon, Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -54,10 +54,10 @@ const ForgotPasswordPage = () => {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3 group">
             <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center shadow-lg group-hover:shadow-glow transition-shadow">
-              <Shield className="w-6 h-6 text-accent-foreground" />
+              <EyeIcon className="w-6 h-6 text-accent-foreground" />
             </div>
             <div className="text-left">
-              <h1 className="font-display font-bold text-xl text-white">CivicGuard</h1>
+              <h1 className="font-display font-bold text-xl text-white">Civic-Eye</h1>
               <p className="text-xs text-white/60">Smart Civic Platform</p>
             </div>
           </Link>
