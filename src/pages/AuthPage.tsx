@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye as EyeIcon, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
+import { ScanEye, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -112,8 +112,8 @@ const AuthPage = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center shadow-lg group-hover:shadow-glow transition-shadow">
-              <EyeIcon className="w-6 h-6 text-accent-foreground" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg group-hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-shadow">
+              <ScanEye className="w-6 h-6 text-white" />
             </div>
             <div className="text-left">
               <h1 className="font-display font-bold text-xl text-white">Civic-Eye</h1>
@@ -311,7 +311,7 @@ const AuthPage = () => {
                 to="/admin-login" 
                 className="text-sm text-red-400 hover:text-red-300 transition-colors inline-flex items-center gap-1"
               >
-                <EyeIcon className="w-3 h-3" />
+                <ScanEye className="w-3 h-3" />
                 Admin Portal
               </Link>
             </div>
