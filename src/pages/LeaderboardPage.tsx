@@ -25,6 +25,34 @@ interface LeaderboardUser {
   } | null;
 }
 
+// Demo user names for users without profiles
+const DEMO_NAMES: Record<string, string> = {
+  'a1000001-0000-0000-0000-000000000001': 'Aarav Sharma',
+  'a1000001-0000-0000-0000-000000000002': 'Ananya Desai',
+  'a1000001-0000-0000-0000-000000000003': 'Vivaan Patel',
+  'a1000001-0000-0000-0000-000000000004': 'Diya Iyer',
+  'a1000001-0000-0000-0000-000000000005': 'Arjun Reddy',
+  'a1000001-0000-0000-0000-000000000006': 'Priya Nair',
+  'a1000001-0000-0000-0000-000000000007': 'Kabir Singh',
+  'a1000001-0000-0000-0000-000000000008': 'Meera Joshi',
+  'a1000001-0000-0000-0000-000000000009': 'Rohan Gupta',
+  'a1000001-0000-0000-0000-000000000010': 'Ishita Verma',
+  'a1000001-0000-0000-0000-000000000011': 'Aditya Kumar',
+  'a1000001-0000-0000-0000-000000000012': 'Sneha Chatterjee',
+  'a1000001-0000-0000-0000-000000000013': 'Dev Malhotra',
+  'a1000001-0000-0000-0000-000000000014': 'Riya Kapoor',
+  'a1000001-0000-0000-0000-000000000015': 'Harsh Mehta',
+  'a1000001-0000-0000-0000-000000000016': 'Kavya Rao',
+  'a1000001-0000-0000-0000-000000000017': 'Yash Saxena',
+  'a1000001-0000-0000-0000-000000000018': 'Pooja Bhatt',
+  'a1000001-0000-0000-0000-000000000019': 'Rahul Mishra',
+  'a1000001-0000-0000-0000-000000000020': 'Neha Agarwal',
+};
+
+const getUserName = (user: LeaderboardUser): string => {
+  return user.profile?.full_name || DEMO_NAMES[user.user_id] || 'Anonymous Citizen';
+};
+
 const LeaderboardPage = () => {
   const [activeTab, setActiveTab] = useState('points');
 
@@ -217,7 +245,7 @@ const LeaderboardPage = () => {
                         {/* Avatar */}
                         <Avatar className="w-12 h-12 border-2 border-muted">
                           <AvatarFallback className="bg-gradient-to-br from-accent to-primary text-white">
-                            {user.profile?.full_name?.charAt(0) || 'U'}
+                            {getUserName(user).charAt(0)}
                           </AvatarFallback>
                         </Avatar>
 
@@ -225,7 +253,7 @@ const LeaderboardPage = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold truncate">
-                              {user.profile?.full_name || 'Anonymous Citizen'}
+                              {getUserName(user)}
                             </span>
                             {getLevelIcon(user.level)}
                           </div>
