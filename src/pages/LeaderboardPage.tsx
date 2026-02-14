@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Award, Star, Crown, Users, TrendingUp } from 'lucide-react';
+import { Trophy, Medal, Award, Star, Crown, Users, TrendingUp, BarChart3, PieChart } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -10,6 +10,8 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart as RechartsPie, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 interface LeaderboardUser {
   id: string;
@@ -53,13 +55,19 @@ const getUserName = (user: LeaderboardUser): string => {
   return user.profile?.full_name || DEMO_NAMES[user.user_id] || 'Anonymous Citizen';
 };
 
+const LEVEL_COLORS = {
+  'Champion': '#eab308',
+  'Active Citizen': '#a855f7',
+  'Contributor': '#3b82f6',
+  'Newcomer': '#6b7280',
+};
+
 const LeaderboardPage = () => {
   const [activeTab, setActiveTab] = useState('points');
 
   const { data: leaderboard, isLoading } = useQuery({
     queryKey: ['leaderboard'],
     queryFn: async () => {
-      // Fetch rewards
       const { data: rewards, error: rewardsError } = await supabase
         .from('user_rewards')
         .select('*')
@@ -68,14 +76,12 @@ const LeaderboardPage = () => {
       
       if (rewardsError) throw rewardsError;
       
-      // Fetch profiles for these users
       const userIds = rewards?.map(r => r.user_id) || [];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url')
         .in('id', userIds);
       
-      // Map profiles to rewards
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
       
       return rewards?.map(reward => ({
@@ -84,6 +90,26 @@ const LeaderboardPage = () => {
       })) as LeaderboardUser[];
     },
   });
+
+  // Compute chart data
+  const levelDistribution = leaderboard ? Object.entries(
+    leaderboard.reduce((acc, u) => {
+      acc[u.level] = (acc[u.level] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([name, value]) => ({ name, value, color: LEVEL_COLORS[name as keyof typeof LEVEL_COLORS] || '#6b7280' })) : [];
+
+  const top10Data = leaderboard?.slice(0, 10).map(u => ({
+    name: getUserName(u).split(' ')[0],
+    points: u.points,
+    submitted: u.complaints_submitted,
+    resolved: u.complaints_resolved,
+  })) || [];
+
+  const totalPoints = leaderboard?.reduce((sum, u) => sum + u.points, 0) || 0;
+  const totalSubmitted = leaderboard?.reduce((sum, u) => sum + u.complaints_submitted, 0) || 0;
+  const totalResolved = leaderboard?.reduce((sum, u) => sum + u.complaints_resolved, 0) || 0;
+  const avgPoints = leaderboard?.length ? Math.round(totalPoints / leaderboard.length) : 0;
 
   const getLevelIcon = (level: string) => {
     switch (level) {
@@ -118,6 +144,12 @@ const LeaderboardPage = () => {
     return 0;
   }) : [];
 
+  const chartConfig = {
+    points: { label: 'Points', color: 'hsl(var(--accent))' },
+    submitted: { label: 'Submitted', color: 'hsl(var(--info, 200 80% 55%))' },
+    resolved: { label: 'Resolved', color: 'hsl(var(--success, 140 70% 45%))' },
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -142,14 +174,14 @@ const LeaderboardPage = () => {
         </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/20">
             <CardContent className="p-6 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center">
                 <Trophy className="w-6 h-6 text-yellow-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Citizens</p>
+                <p className="text-sm text-muted-foreground">Citizens</p>
                 <p className="text-2xl font-bold">{leaderboard?.length || 0}</p>
               </div>
             </CardContent>
@@ -161,9 +193,7 @@ const LeaderboardPage = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Points</p>
-                <p className="text-2xl font-bold">
-                  {leaderboard?.reduce((sum, u) => sum + u.points, 0).toLocaleString() || 0}
-                </p>
+                <p className="text-2xl font-bold">{totalPoints.toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>
@@ -174,13 +204,89 @@ const LeaderboardPage = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Issues Resolved</p>
-                <p className="text-2xl font-bold">
-                  {leaderboard?.reduce((sum, u) => sum + u.complaints_resolved, 0) || 0}
-                </p>
+                <p className="text-2xl font-bold">{totalResolved}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/20">
+            <CardContent className="p-6 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Avg Points</p>
+                <p className="text-2xl font-bold">{avgPoints}</p>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Charts Section */}
+        {!isLoading && leaderboard && leaderboard.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Top 10 Bar Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <BarChart3 className="w-5 h-5 text-accent" />
+                  Top 10 Citizens
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[300px]">
+                  <BarChart data={top10Data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                    <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="points" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            {/* Level Distribution Pie */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <PieChart className="w-5 h-5 text-accent" />
+                  Level Distribution
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPie>
+                      <Pie
+                        data={levelDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={4}
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}`}
+                      >
+                        {levelDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip />
+                    </RechartsPie>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex flex-wrap justify-center gap-4 mt-2">
+                  {levelDistribution.map((entry) => (
+                    <div key={entry.name} className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
+                      <span className="text-xs text-muted-foreground">{entry.name} ({entry.value})</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Leaderboard Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

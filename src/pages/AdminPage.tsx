@@ -4,18 +4,20 @@ import {
   Users, 
   FileText, 
   Shield, 
-  Settings,
   Search,
   MoreVertical,
   UserCheck,
   BarChart3,
-  Layers
+  Layers,
+  UserPlus,
+  Trash2
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,23 +28,106 @@ import { ComplaintManager } from '@/components/admin/ComplaintManager';
 import { useComplaintStats } from '@/hooks/useComplaints';
 import { useUsers, useUpdateUserRole } from '@/hooks/useUsers';
 import { useSearch } from '@/hooks/useSearch';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const AdminPage = () => {
   const { role, isAdmin, isAuthority } = useAuth();
   const { data: stats } = useComplaintStats();
   const { data: users, isLoading: usersLoading } = useUsers();
   const updateRole = useUpdateUserRole();
+  const queryClient = useQueryClient();
   
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deleteUserName, setDeleteUserName] = useState('');
+  const [newUser, setNewUser] = useState({ email: '', password: '', fullName: '', role: 'citizen' as 'citizen' | 'authority' | 'admin' });
+
   const { searchQuery, setSearchQuery, filteredItems: filteredUsers } = useSearch(
     users || [],
     ['full_name', 'email', 'role']
   );
+
+  const addUserMutation = useMutation({
+    mutationFn: async (userData: typeof newUser) => {
+      // Use the register-admin edge function for admin creation or direct signup
+      const { data, error } = await supabase.functions.invoke('register-admin', {
+        body: {
+          email: userData.email,
+          password: userData.password,
+          fullName: userData.fullName,
+          role: userData.role,
+          isAdminCreating: true,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User created successfully');
+      setShowAddDialog(false);
+      setNewUser({ email: '', password: '', fullName: '', role: 'citizen' });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create user');
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      // Delete user rewards
+      await supabase.from('user_rewards').delete().eq('user_id', userId);
+      // Delete user roles
+      await supabase.from('user_roles').delete().eq('user_id', userId);
+      // Delete profile
+      const { error } = await supabase.from('profiles').delete().eq('id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User removed successfully');
+      setDeleteUserId(null);
+    },
+    onError: () => {
+      toast.error('Failed to delete user');
+      setDeleteUserId(null);
+    },
+  });
 
   const handleRoleChange = (userId: string, newRole: 'citizen' | 'authority' | 'admin') => {
     updateRole.mutate({ userId, newRole });
@@ -175,16 +260,24 @@ const AdminPage = () => {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <CardTitle>User Management</CardTitle>
-                      <CardDescription>View and manage user roles</CardDescription>
+                      <CardDescription>View, add, and manage user roles</CardDescription>
                     </div>
-                    <div className="relative w-full md:w-64">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input 
-                        placeholder="Search users..." 
-                        className="pl-10"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-full md:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input 
+                          placeholder="Search users..." 
+                          className="pl-10"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
+                      {isAdmin && (
+                        <Button onClick={() => setShowAddDialog(true)} className="gap-2">
+                          <UserPlus className="w-4 h-4" />
+                          Add User
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -243,6 +336,17 @@ const AdminPage = () => {
                                   <DropdownMenuItem onClick={() => handleRoleChange(user.id, 'admin')}>
                                     Set as Admin
                                   </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      setDeleteUserId(user.id);
+                                      setDeleteUserName(user.full_name || user.email || 'this user');
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete User
+                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             )}
@@ -272,6 +376,90 @@ const AdminPage = () => {
         </div>
       </main>
       <Footer />
+
+      {/* Add User Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+            <DialogDescription>Create a new user account with a specific role.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                placeholder="Enter full name"
+                value={newUser.fullName}
+                onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="user@example.com"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Min 6 characters"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="role">Role</Label>
+              <Select value={newUser.role} onValueChange={(v: any) => setNewUser({ ...newUser, role: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="citizen">Citizen</SelectItem>
+                  <SelectItem value="authority">Authority</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+            <Button 
+              onClick={() => addUserMutation.mutate(newUser)}
+              disabled={!newUser.email || !newUser.password || newUser.password.length < 6 || addUserMutation.isPending}
+            >
+              {addUserMutation.isPending ? 'Creating...' : 'Create User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteUserName}</strong>? This will remove their profile, roles, and rewards. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteUserId && deleteUserMutation.mutate(deleteUserId)}
+            >
+              {deleteUserMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
