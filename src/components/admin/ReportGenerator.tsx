@@ -435,10 +435,10 @@ export function ReportGenerator() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
               <Label>Status</Label>
-              <Select value={filters.status || ''} onValueChange={(value) => setFilters({ ...filters, status: value || undefined })}>
+              <Select value={filters.status || 'all'} onValueChange={(value) => setFilters({ ...filters, status: value === 'all' ? undefined : value })}>
                 <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="investigating">Investigating</SelectItem>
                   <SelectItem value="in-progress">In Progress</SelectItem>
@@ -449,10 +449,10 @@ export function ReportGenerator() {
             </div>
             <div>
               <Label>Type</Label>
-              <Select value={filters.type || ''} onValueChange={(value) => setFilters({ ...filters, type: value || undefined })}>
+              <Select value={filters.type || 'all'} onValueChange={(value) => setFilters({ ...filters, type: value === 'all' ? undefined : value })}>
                 <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="civic">Civic</SelectItem>
                   <SelectItem value="anonymous">Anonymous</SelectItem>
                   <SelectItem value="special">Special</SelectItem>
@@ -461,10 +461,10 @@ export function ReportGenerator() {
             </div>
             <div>
               <Label>Priority</Label>
-              <Select value={filters.priority || ''} onValueChange={(value) => setFilters({ ...filters, priority: value || undefined })}>
+              <Select value={filters.priority || 'all'} onValueChange={(value) => setFilters({ ...filters, priority: value === 'all' ? undefined : value })}>
                 <SelectTrigger><SelectValue placeholder="All Priorities" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Priorities</SelectItem>
+                  <SelectItem value="all">All Priorities</SelectItem>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
@@ -474,10 +474,10 @@ export function ReportGenerator() {
             </div>
             <div>
               <Label>Category</Label>
-              <Select value={filters.category || ''} onValueChange={(value) => setFilters({ ...filters, category: value || undefined })}>
+              <Select value={filters.category || 'all'} onValueChange={(value) => setFilters({ ...filters, category: value === 'all' ? undefined : value })}>
                 <SelectTrigger><SelectValue placeholder="All Categories" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {categories?.map((cat) => (
                     <SelectItem key={cat.id} value={cat.slug}>{cat.icon} {cat.name}</SelectItem>
                   ))}
