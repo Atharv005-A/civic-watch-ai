@@ -14,7 +14,8 @@ import {
   LogOut,
   Settings,
   ChevronDown,
-  Trophy
+  Trophy,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
