@@ -15,6 +15,7 @@ import AdminPage from "./pages/AdminPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import FeedbackPage from "./pages/FeedbackPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
@@ -61,6 +62,14 @@ const App = () => (
             />
             <Route path="/heatmap" element={<HeatmapPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route 
+              path="/feedback" 
+              element={
+                <ProtectedRoute>
+                  <FeedbackPage />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/admin" 
               element={
