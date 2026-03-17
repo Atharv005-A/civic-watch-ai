@@ -63,6 +63,14 @@ const App = () => (
             <Route path="/heatmap" element={<HeatmapPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route 
+              path="/feedback" 
+              element={
+                <ProtectedRoute>
+                  <FeedbackPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/admin" 
               element={
                 <ProtectedRoute requiredRoles={['admin', 'authority']}>

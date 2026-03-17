@@ -35,6 +35,7 @@ const navItems = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Heatmap', path: '/heatmap', icon: MapPin },
   { name: 'Leaderboard', path: '/leaderboard', icon: Trophy },
+  { name: 'Feedback', path: '/feedback', icon: MessageSquare },
 ];
 
 export function Header() {
