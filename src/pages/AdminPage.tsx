@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ReportGenerator } from '@/components/admin/ReportGenerator';
 import { CategoryManager } from '@/components/admin/CategoryManager';
 import { ComplaintManager } from '@/components/admin/ComplaintManager';
+import { FeedbackManager } from '@/components/admin/FeedbackManager';
 import { useComplaintStats } from '@/hooks/useComplaints';
 import { useUsers, useUpdateUserRole } from '@/hooks/useUsers';
 import { useSearch } from '@/hooks/useSearch';
