@@ -376,6 +376,13 @@ const AdminPage = () => {
               </TabsContent>
             )}
 
+            {/* Feedback Tab */}
+            {isAdmin && (
+              <TabsContent value="feedback">
+                <FeedbackManager />
+              </TabsContent>
+            )}
+
             {/* Reports Tab */}
             {isAdmin && (
               <TabsContent value="reports">
