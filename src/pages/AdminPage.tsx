@@ -6,6 +6,7 @@ import {
   Shield, 
   Search,
   MoreVertical,
+  MessageSquare,
   UserCheck,
   BarChart3,
   Layers,
@@ -25,6 +26,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ReportGenerator } from '@/components/admin/ReportGenerator';
 import { CategoryManager } from '@/components/admin/CategoryManager';
 import { ComplaintManager } from '@/components/admin/ComplaintManager';
+import { FeedbackManager } from '@/components/admin/FeedbackManager';
 import { useComplaintStats } from '@/hooks/useComplaints';
 import { useUsers, useUpdateUserRole } from '@/hooks/useUsers';
 import { useSearch } from '@/hooks/useSearch';
@@ -240,6 +242,14 @@ const AdminPage = () => {
                     <Layers className="w-4 h-4" />
                     Categories
                   </TabsTrigger>
+                  <TabsTrigger value="feedback" className="gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Feedback
+                  </TabsTrigger>
+                  <TabsTrigger value="reports" className="gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Reports
+                  </TabsTrigger>
                   <TabsTrigger value="reports" className="gap-2">
                     <BarChart3 className="w-4 h-4" />
                     Reports
@@ -363,6 +373,13 @@ const AdminPage = () => {
             {isAdmin && (
               <TabsContent value="categories">
                 <CategoryManager />
+              </TabsContent>
+            )}
+
+            {/* Feedback Tab */}
+            {isAdmin && (
+              <TabsContent value="feedback">
+                <FeedbackManager />
               </TabsContent>
             )}
 
