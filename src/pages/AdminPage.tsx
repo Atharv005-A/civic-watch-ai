@@ -6,6 +6,7 @@ import {
   Shield, 
   Search,
   MoreVertical,
+  MessageSquare,
   UserCheck,
   BarChart3,
   Layers,
